@@ -1,114 +1,86 @@
-const fs = require('fs');
-const path = require('path');
-const { Client, Collection, GatewayIntentBits, Events } = require('discord.js');
-const { token, debug, botName } = require('./config');
-const { asegurarPanelFijo } = require('./utils/panel');
-const { iniciarRespaldoAutomatico } = require('./utils/autoBackup');
-const {
-  registrarGuildSiNoExiste,
-  obtenerConfiguracionEfectiva,
-} = require('./database/db');
+require('dotenv').config();
 
-require('./database/db');
+const fs = require('node:fs');
+const path = require('node:path');
+const { Client, Collection, GatewayIntentBits } = require('discord.js');
+const logger = require('./utils/logger');
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+  ],
 });
 
 client.commands = new Collection();
 
-function cargarComandos() {
-  const commandsPath = path.join(__dirname, 'commands');
-  const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+/**
+ * =========================
+ * CARGA DE COMANDOS
+ * =========================
+ */
+const commandsPath = path.join(__dirname, 'commands');
+const commandFiles = fs
+  .readdirSync(commandsPath)
+  .filter(file => file.endsWith('.js'));
 
-  for (const file of commandFiles) {
-    const filePath = path.join(commandsPath, file);
-    const command = require(filePath);
+for (const file of commandFiles) {
+  const filePath = path.join(commandsPath, file);
+  const command = require(filePath);
 
-    if (!command?.data?.name || typeof command.execute !== 'function') {
-      console.warn(`⚠️ Comando ignorado por formato inválido: ${file}`);
-      continue;
-    }
-
+  if ('data' in command && 'execute' in command) {
     client.commands.set(command.data.name, command);
+    logger.info('Comando cargado', {
+      file,
+      command: command.data.name,
+    });
+  } else {
+    logger.warn('Comando ignorado por formato inválido', { file });
   }
 }
 
-function cargarEventos() {
-  const eventsPath = path.join(__dirname, 'events');
+/**
+ * =========================
+ * CARGA DE EVENTOS
+ * =========================
+ */
+const eventsPath = path.join(__dirname, 'events');
+const eventFiles = fs
+  .readdirSync(eventsPath)
+  .filter(file => file.endsWith('.js'));
 
-  if (!fs.existsSync(eventsPath)) return;
+for (const file of eventFiles) {
+  const filePath = path.join(eventsPath, file);
+  const event = require(filePath);
 
-  const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
-
-  for (const file of eventFiles) {
-    const filePath = path.join(eventsPath, file);
-    const event = require(filePath);
-
-    if (!event?.name || typeof event.execute !== 'function') {
-      console.warn(`⚠️ Evento ignorado por formato inválido: ${file}`);
-      continue;
-    }
-
-    if (event.once) {
-      client.once(event.name, (...args) => event.execute(...args));
-    } else {
-      client.on(event.name, (...args) => event.execute(...args));
-    }
+  if (!event?.name || typeof event.execute !== 'function') {
+    logger.warn('Evento ignorado por formato inválido', { file });
+    continue;
   }
+
+  if (event.once) {
+    client.once(event.name, (...args) => event.execute(...args));
+  } else {
+    client.on(event.name, (...args) => event.execute(...args));
+  }
+
+  logger.info('Evento cargado', {
+    file,
+    event: event.name,
+    once: Boolean(event.once),
+  });
 }
 
-cargarComandos();
-cargarEventos();
-
-client.once(Events.ClientReady, async readyClient => {
-  console.log(`✅ ${botName} encendido como ${readyClient.user.tag}`);
-  console.log(`📦 Comandos cargados: ${client.commands.size}`);
-
-  try {
-    const guilds = await client.guilds.fetch();
-
-    for (const [, guildPreview] of guilds) {
-      try {
-        const guild = await client.guilds.fetch(guildPreview.id);
-        await guild.channels.fetch();
-
-        registrarGuildSiNoExiste(guild);
-
-        const config = obtenerConfiguracionEfectiva(guild.id);
-
-        if (!config.system_enabled) {
-          console.log(`⏸️ Sistema deshabilitado en: ${guild.name}`);
-          continue;
-        }
-
-        await asegurarPanelFijo(guild);
-
-        const BACKUP_INTERVAL_MS = 20 * 60 * 1000;
-        iniciarRespaldoAutomatico(guild, BACKUP_INTERVAL_MS);
-
-        console.log(`✅ Sistema inicializado en: ${guild.name}`);
-      } catch (guildError) {
-        console.error(`❌ Error inicializando guild ${guildPreview.id}:`, guildError);
-      }
-    }
-  } catch (error) {
-    console.error('❌ Error al iniciar sistema multiservidor:', error);
-  }
+/**
+ * =========================
+ * READY
+ * =========================
+ */
+client.once('ready', readyClient => {
+  logger.ready('EL MAISTRO conectado correctamente', {
+    bot: readyClient.user.tag,
+    guilds: readyClient.guilds.cache.size,
+  });
 });
 
-process.on('unhandledRejection', error => {
-  console.error('❌ Unhandled Rejection:', error);
-});
-
-process.on('uncaughtException', error => {
-  console.error('❌ Uncaught Exception:', error);
-});
-
-if (debug) {
-  console.log('🛠️ Modo debug activado.');
-}
-
-client.login(token).catch(error => {
-  console.error('❌ Error al iniciar sesión del bot:', error);
-});
+client.login(process.env.DISCORD_TOKEN);
