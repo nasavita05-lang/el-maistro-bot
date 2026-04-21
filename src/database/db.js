@@ -510,6 +510,15 @@ function getUltimaRevision(guildId, userId) {
     SELECT * FROM revisiones
     WHERE guild_id = ? AND user_id = ?
   `).get(guildId, userId);
+  
+}
+
+function obtenerJornadasActivas(guildId) {
+  return db.prepare(`
+    SELECT * FROM jornadas
+    WHERE guild_id = ? AND estado = 'activo'
+    ORDER BY entrada_ts ASC
+  `).all(guildId);
 }
 
 module.exports = {
@@ -522,6 +531,7 @@ module.exports = {
   obtenerHistorial,
   topTrabajadores,
   obtenerTodasLasJornadas,
+  obtenerJornadasActivas,
 
   obtenerConfiguracion,
   obtenerConfiguracionEfectiva,
