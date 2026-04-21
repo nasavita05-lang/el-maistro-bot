@@ -1,6 +1,12 @@
 const fs = require('fs');
-const Database = require('better-sqlite3');
 const path = require('path');
+const Database = require('better-sqlite3');
+const {
+  timezone: defaultTimezone,
+  panelChannelId: defaultPanelChannelId,
+  logChannelId: defaultLogChannelId,
+  rankingChannelId: defaultRankingChannelId,
+} = require('../config');
 
 const STORAGE_DIR =
   process.env.RAILWAY_VOLUME_MOUNT_PATH ||
@@ -13,6 +19,7 @@ if (!fs.existsSync(STORAGE_DIR)) {
 
 const dbPath = path.join(STORAGE_DIR, 'data.sqlite');
 const db = new Database(dbPath);
+
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
