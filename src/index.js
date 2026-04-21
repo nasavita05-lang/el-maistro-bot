@@ -82,3 +82,9 @@ client.once('clientReady', readyClient => {
     guilds: readyClient.guilds.cache.size,
   });
 });
+
+client.login(process.env.DISCORD_TOKEN).catch(error => {
+  logger.error('Fallo al iniciar sesión con Discord', {
+    message: error?.message,
+  });
+});
