@@ -7,7 +7,7 @@ const { exigirRol, ROLES } = require('../utils/permissions');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('ranking')
-    .setDescription('Consultar ranking laboral'),
+    .setDescription('Consultar ranking laboral institucional'),
 
   async execute(interaction) {
     if (!interaction.guild) {
@@ -30,8 +30,15 @@ module.exports = {
     const top = topTrabajadores(guildId, 10);
 
     if (!top.length) {
+      const warnEmbed = new EmbedBuilder()
+        .setColor(COLORS.warning || 0xf1c40f)
+        .setTitle('⚠️ Ranking no disponible')
+        .setDescription('No existen registros acumulados en el sistema para generar la clasificación laboral.')
+        .setFooter({ text: FOOTERS.ranking || FOOTERS.official })
+        .setTimestamp();
+
       await interaction.reply({
-        content: '⚠️ No existen registros acumulados en el sistema.',
+        embeds: [warnEmbed],
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -52,10 +59,29 @@ module.exports = {
       ].join('\n');
     }).join('\n\n━━━━━━━━━━━━━━━━━━━━━━\n\n');
 
+    const lider = top[0];
+
     const embed = new EmbedBuilder()
-      .setColor(COLORS.gold)
+      .setColor(COLORS.gold || COLORS.primary)
       .setTitle('🏆 Ranking Laboral Institucional')
       .setDescription(descripcion)
+      .addFields(
+        {
+          name: '🥇 Líder actual',
+          value: `<@${lider.user_id}>`,
+          inline: true,
+        },
+        {
+          name: '⏱️ Mejor acumulado',
+          value: formatearMinutos(lider.total_minutos),
+          inline: true,
+        },
+        {
+          name: '📊 Registros evaluados',
+          value: String(top.length),
+          inline: true,
+        }
+      )
       .setFooter({ text: FOOTERS.ranking || FOOTERS.official })
       .setTimestamp();
 

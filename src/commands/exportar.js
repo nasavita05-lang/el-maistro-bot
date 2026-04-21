@@ -1,7 +1,15 @@
 const fs = require('fs');
 const path = require('path');
-const { SlashCommandBuilder, AttachmentBuilder, PermissionFlagsBits , MessageFlags} = require('discord.js');
+const {
+  SlashCommandBuilder,
+  AttachmentBuilder,
+  PermissionFlagsBits,
+  MessageFlags,
+  EmbedBuilder,
+} = require('discord.js');
+
 const { obtenerTodasLasJornadas } = require('../database/db');
+const { COLORS, FOOTERS } = require('../utils/theme');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -10,12 +18,32 @@ module.exports = {
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
   async execute(interaction) {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    if (!interaction.guild) {
+      await interaction.reply({
+        content: '❌ Este comando solo puede usarse dentro de un servidor.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    await interaction.deferReply({
+      flags: MessageFlags.Ephemeral,
+    });
 
     const registros = obtenerTodasLasJornadas(interaction.guild.id);
 
     if (!registros.length) {
-      return interaction.editReply({ content: 'No hay registros para exportar.' });
+      const warnEmbed = new EmbedBuilder()
+        .setColor(COLORS.warning || 0xf1c40f)
+        .setTitle('⚠️ Exportación no disponible')
+        .setDescription('No existen registros de jornadas para exportar en este servidor.')
+        .setFooter({ text: FOOTERS.admin || FOOTERS.official })
+        .setTimestamp();
+
+      await interaction.editReply({
+        embeds: [warnEmbed],
+      });
+      return;
     }
 
     const exportDir = path.join(__dirname, '../../exports');
@@ -23,7 +51,10 @@ module.exports = {
       fs.mkdirSync(exportDir, { recursive: true });
     }
 
-    const filePath = path.join(exportDir, `jornadas_${interaction.guild.id}_${Date.now()}.csv`);
+    const filePath = path.join(
+      exportDir,
+      `jornadas_${interaction.guild.id}_${Date.now()}.csv`
+    );
 
     const encabezados = [
       'id',
@@ -34,7 +65,7 @@ module.exports = {
       'salida_ts',
       'minutos_trabajados',
       'estado',
-      'fecha'
+      'fecha',
     ];
 
     const lineas = [encabezados.join(',')];
@@ -49,7 +80,7 @@ module.exports = {
         r.salida_ts ?? '',
         r.minutos_trabajados ?? 0,
         `"${String(r.estado).replace(/"/g, '""')}"`,
-        `"${String(r.fecha).replace(/"/g, '""')}"`
+        `"${String(r.fecha).replace(/"/g, '""')}"`,
       ].join(','));
     }
 
@@ -57,9 +88,33 @@ module.exports = {
 
     const archivo = new AttachmentBuilder(filePath);
 
-    return interaction.editReply({
-      content: 'Aquí tienes la exportación CSV.',
-      files: [archivo]
+    const okEmbed = new EmbedBuilder()
+      .setColor(COLORS.success)
+      .setTitle('📤 Exportación completada')
+      .setDescription('La exportación institucional de jornadas fue generada correctamente en formato CSV.')
+      .addFields(
+        {
+          name: '🏛️ Servidor',
+          value: interaction.guild.name,
+          inline: true,
+        },
+        {
+          name: '📁 Registros exportados',
+          value: String(registros.length),
+          inline: true,
+        },
+        {
+          name: '📄 Formato',
+          value: 'CSV',
+          inline: true,
+        }
+      )
+      .setFooter({ text: FOOTERS.admin || FOOTERS.official })
+      .setTimestamp();
+
+    await interaction.editReply({
+      embeds: [okEmbed],
+      files: [archivo],
     });
   },
 };
