@@ -76,11 +76,9 @@ for (const file of eventFiles) {
  * READY
  * =========================
  */
-client.once('ready', readyClient => {
+client.once('clientReady', readyClient => {
   logger.ready('EL MAISTRO conectado correctamente', {
     bot: readyClient.user.tag,
     guilds: readyClient.guilds.cache.size,
   });
 });
-
-client.login(process.env.DISCORD_TOKEN);
