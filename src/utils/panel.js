@@ -17,27 +17,49 @@ const { COLORS, FOOTERS } = require('./theme');
 function crearPanelPayload() {
   const embed = new EmbedBuilder()
     .setColor(COLORS.primary)
-    .setTitle(`🏛️ ${botName} | Panel Institucional de Bitácora`)
+    .setTitle(`🏛️ ${botName} | Panel Central de Bitácora`)
     .setDescription(
       [
-        '━━━━━━━━━━━━━━━━━━━━',
-        '📘 **REGISTRO OFICIAL DE BITÁCORA LABORAL**',
-        '━━━━━━━━━━━━━━━━━━━━',
+        '━━━━━━━━━━━━━━━━━━━━━━',
+        '📘 **SISTEMA INSTITUCIONAL DE CONTROL LABORAL**',
+        '━━━━━━━━━━━━━━━━━━━━━━',
         '',
-        'Seleccione una acción desde el panel:',
+        'Bienvenido al panel central del sistema.',
+        'Desde este módulo puede registrar, consultar y supervisar movimientos de jornada laboral en tiempo real.',
         '',
-        '🟢 **Entrar** → Apertura de jornada',
-        '🔴 **Salir** → Cierre de jornada',
-        '⏱️ **Horas** → Consulta de horas acumuladas',
-        '🏆 **Ranking** → Consulta de clasificación laboral',
+        '### Acciones disponibles',
+        '🟢 **Entrar** — Registrar inicio de jornada',
+        '🔴 **Salir** — Registrar cierre de jornada',
+        '⏱️ **Horas** — Consultar tiempo acumulado',
+        '🏆 **Ranking** — Ver clasificación laboral',
+        '',
+        'Use los botones inferiores para interactuar con el sistema.',
       ].join('\n')
     )
     .addFields(
-      { name: '📂 Tipo de sistema', value: 'Bitácora laboral automatizada', inline: true },
-      { name: '🛡️ Estado', value: 'Operativo', inline: true },
-      { name: '📌 Modo', value: 'Panel único institucional', inline: true }
+      {
+        name: '📂 Módulo',
+        value: 'Bitácora laboral automatizada',
+        inline: true,
+      },
+      {
+        name: '🛡️ Estado del sistema',
+        value: 'Operativo',
+        inline: true,
+      },
+      {
+        name: '🏢 Tipo de panel',
+        value: 'Institucional fijo',
+        inline: true,
+      },
+      {
+        name: '📌 Uso recomendado',
+        value: 'Registrar y consultar actividad laboral desde este panel central.',
+      }
     )
-    .setFooter({ text: FOOTERS.official })
+    .setFooter({
+      text: FOOTERS?.official || `${botName} | Sistema institucional`,
+    })
     .setTimestamp();
 
   const row = new ActionRowBuilder().addComponents(
@@ -46,16 +68,19 @@ function crearPanelPayload() {
       .setLabel('Entrar')
       .setEmoji('🟢')
       .setStyle(ButtonStyle.Success),
+
     new ButtonBuilder()
       .setCustomId('panel_salir')
       .setLabel('Salir')
       .setEmoji('🔴')
       .setStyle(ButtonStyle.Danger),
+
     new ButtonBuilder()
       .setCustomId('panel_horas')
       .setLabel('Horas')
       .setEmoji('⏱️')
       .setStyle(ButtonStyle.Primary),
+
     new ButtonBuilder()
       .setCustomId('panel_ranking')
       .setLabel('Ranking')
