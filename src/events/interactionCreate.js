@@ -14,6 +14,7 @@ const { formatearMinutos } = require('../utils/format');
 const { timezone } = require('../config');
 const { COLORS, FOOTERS } = require('../utils/theme');
 const { exigirRol, ROLES } = require('../utils/permissions');
+const { crearLogEntrada, crearLogSalida } = require('../utils/logs');
 
 const cooldowns = new Map();
 
@@ -46,6 +47,21 @@ function tieneCooldown(userId, customId, ms = 3000) {
 function diasSinRevision(lastReviewTs) {
   if (!lastReviewTs) return null;
   return (Date.now() - lastReviewTs) / (1000 * 60 * 60 * 24);
+}
+
+function crearEmbedRespuesta({ color, titulo, descripcion, campos = [] }) {
+  const embed = new EmbedBuilder()
+    .setColor(color)
+    .setTitle(titulo)
+    .setDescription(descripcion)
+    .setFooter({ text: FOOTERS.official })
+    .setTimestamp();
+
+  if (campos.length) {
+    embed.addFields(campos);
+  }
+
+  return embed;
 }
 
 async function enviarLogBitacora(guild, channelId, embed) {
@@ -91,28 +107,33 @@ module.exports = {
       ];
 
       if (!botonesPanel.includes(customId)) return;
-
-      if (interaction.deferred || interaction.replied) {
-        return;
-      }
+      if (interaction.deferred || interaction.replied) return;
 
       await interaction.deferReply({
         flags: MessageFlags.Ephemeral,
       });
 
       if (tieneCooldown(userId, customId)) {
-        await interaction.editReply({
-          content: '⏳ Espera unos segundos antes de volver a usar este botón.',
+        const embed = crearEmbedRespuesta({
+          color: COLORS.warning || 0xf1c40f,
+          titulo: '⏳ Acción en espera',
+          descripcion: 'Espera unos segundos antes de volver a usar este botón.',
         });
+
+        await interaction.editReply({ embeds: [embed] });
         return;
       }
 
       const config = obtenerConfiguracionEfectiva(guildId);
 
       if (!config.system_enabled) {
-        await interaction.editReply({
-          content: '⚠️ El sistema está deshabilitado en este servidor.',
+        const embed = crearEmbedRespuesta({
+          color: COLORS.warning || 0xf1c40f,
+          titulo: '⚠️ Sistema deshabilitado',
+          descripcion: 'El sistema institucional está deshabilitado en este servidor.',
         });
+
+        await interaction.editReply({ embeds: [embed] });
         return;
       }
 
@@ -122,16 +143,24 @@ module.exports = {
       const requiereRolEmpleado = ['panel_entrar', 'panel_salir', 'panel_horas'];
 
       if (requiereRolEmpleado.includes(customId) && !exigirRol(interaction, ROLES.EMPLEADO)) {
-        await interaction.editReply({
-          content: '❌ No tienes permiso para usar este panel laboral.',
+        const embed = crearEmbedRespuesta({
+          color: COLORS.danger || 0x8b0000,
+          titulo: '❌ Acceso denegado',
+          descripcion: 'No tienes permiso para usar este panel laboral.',
         });
+
+        await interaction.editReply({ embeds: [embed] });
         return;
       }
 
       if (customId === 'panel_ranking' && !exigirRol(interaction, ROLES.INSPECTOR)) {
-        await interaction.editReply({
-          content: '❌ No tienes permiso para consultar el ranking.',
+        const embed = crearEmbedRespuesta({
+          color: COLORS.danger || 0x8b0000,
+          titulo: '❌ Acceso denegado',
+          descripcion: 'No tienes permiso para consultar el ranking laboral.',
         });
+
+        await interaction.editReply({ embeds: [embed] });
         return;
       }
 
@@ -139,55 +168,56 @@ module.exports = {
         const activa = obtenerJornadaActiva(userId, guildId);
 
         if (activa) {
-          await interaction.editReply({
-            content: '⚠️ Ya tienes una jornada activa.',
+          const embed = crearEmbedRespuesta({
+            color: COLORS.warning || 0xf1c40f,
+            titulo: '⚠️ Jornada ya activa',
+            descripcion: 'Ya cuentas con una jornada activa dentro del sistema.',
+            campos: [
+              { name: '👤 Trabajador', value: `<@${userId}>`, inline: true },
+              { name: '📌 Estado', value: 'ACTIVO', inline: true },
+            ],
           });
+
+          await interaction.editReply({ embeds: [embed] });
           return;
         }
 
         crearEntrada(userId, username, guildId);
 
-        await interaction.editReply({
-          content: '✅ Entrada registrada correctamente.',
+        const okEmbed = crearEmbedRespuesta({
+          color: COLORS.success,
+          titulo: '🟢 Entrada registrada',
+          descripcion: 'La apertura de jornada fue registrada correctamente.',
+          campos: [
+            { name: '👤 Trabajador', value: `<@${userId}>`, inline: true },
+            { name: '🧷 Usuario', value: username, inline: true },
+            { name: '📌 Estado actual', value: 'ACTIVO', inline: true },
+          ],
         });
+
+        await interaction.editReply({ embeds: [okEmbed] });
 
         const rev = getUltimaRevision(guildId, userId);
         const dias = diasSinRevision(rev?.last_review_ts);
 
         if (dias !== null && dias > 7) {
+          const avisoEmbed = crearEmbedRespuesta({
+            color: COLORS.warning || 0xf1c40f,
+            titulo: '🔴 Revisión pendiente',
+            descripcion: 'Tienes una revisión pendiente crítica. Contacta a un supervisor.',
+          });
+
           await interaction.followUp({
-            content: '🔴 Tienes una revisión pendiente crítica. Contacta a un supervisor.',
+            embeds: [avisoEmbed],
             flags: MessageFlags.Ephemeral,
           }).catch(() => {});
         }
 
-        const logEmbed = new EmbedBuilder()
-          .setColor(COLORS.success)
-          .setTitle('📘 REGISTRO DE BITÁCORA')
-          .setDescription([
-            '━━━━━━━━━━━━━━━━━━━━',
-            '🟢 **MOVIMIENTO REGISTRADO: ENTRADA A SERVICIO**',
-            '━━━━━━━━━━━━━━━━━━━━',
-          ].join('\n'))
-          .addFields(
-            { name: '👤 Trabajador', value: `<@${userId}>`, inline: true },
-            { name: '🧷 Usuario Discord', value: username, inline: true },
-            { name: '📌 Estado actual', value: 'ACTIVO', inline: true },
-            {
-              name: '🕓 Fecha de registro',
-              value: new Intl.DateTimeFormat('es-MX', {
-                timeZone: activeTimezone,
-                dateStyle: 'full',
-                timeStyle: 'short',
-              }).format(new Date()),
-            },
-            {
-              name: '📄 Observación del sistema',
-              value: 'Se abrió correctamente una nueva jornada laboral dentro del sistema oficial de bitácora.',
-            }
-          )
-          .setFooter({ text: FOOTERS.official })
-          .setTimestamp();
+        const logEmbed = crearLogEntrada({
+          userId,
+          username,
+          timezone: activeTimezone,
+        });
 
         await enviarLogBitacora(guild, logChannelId, logEmbed);
         return;
@@ -197,47 +227,37 @@ module.exports = {
         const resultado = cerrarSalida(userId, guildId);
 
         if (!resultado) {
-          await interaction.editReply({
-            content: '⚠️ No tienes una jornada activa.',
+          const embed = crearEmbedRespuesta({
+            color: COLORS.warning || 0xf1c40f,
+            titulo: '⚠️ Sin jornada activa',
+            descripcion: 'No tienes una jornada activa para registrar salida.',
           });
+
+          await interaction.editReply({ embeds: [embed] });
           return;
         }
 
         const tiempo = formatearMinutos(resultado.minutos_trabajados);
 
-        await interaction.editReply({
-          content: `✅ Salida registrada. Tiempo trabajado: ${tiempo}`,
+        const okEmbed = crearEmbedRespuesta({
+          color: COLORS.danger,
+          titulo: '🔴 Salida registrada',
+          descripcion: 'La jornada laboral fue cerrada correctamente.',
+          campos: [
+            { name: '👤 Trabajador', value: `<@${userId}>`, inline: true },
+            { name: '🧷 Usuario', value: username, inline: true },
+            { name: '⏱️ Tiempo trabajado', value: tiempo, inline: true },
+          ],
         });
 
-        const logEmbed = new EmbedBuilder()
-          .setColor(COLORS.danger)
-          .setTitle('📘 REGISTRO DE BITÁCORA')
-          .setDescription([
-            '━━━━━━━━━━━━━━━━━━━━',
-            '🔴 **MOVIMIENTO REGISTRADO: SALIDA DE SERVICIO**',
-            '━━━━━━━━━━━━━━━━━━━━',
-          ].join('\n'))
-          .addFields(
-            { name: '👤 Trabajador', value: `<@${userId}>`, inline: true },
-            { name: '🧷 Usuario Discord', value: username, inline: true },
-            { name: '📌 Estado actual', value: 'CERRADO', inline: true },
-            { name: '⏱️ Tiempo laborado', value: tiempo, inline: true },
-            {
-              name: '🕓 Fecha de registro',
-              value: new Intl.DateTimeFormat('es-MX', {
-                timeZone: activeTimezone,
-                dateStyle: 'full',
-                timeStyle: 'short',
-              }).format(new Date()),
-              inline: true,
-            },
-            {
-              name: '📄 Observación del sistema',
-              value: 'La jornada laboral fue cerrada correctamente y los datos quedaron asentados en la bitácora oficial.',
-            }
-          )
-          .setFooter({ text: FOOTERS.official })
-          .setTimestamp();
+        await interaction.editReply({ embeds: [okEmbed] });
+
+        const logEmbed = crearLogSalida({
+          userId,
+          username,
+          tiempo,
+          timezone: activeTimezone,
+        });
 
         await enviarLogBitacora(guild, logChannelId, logEmbed);
         await renderDashboardLight(interaction.client, guildId).catch(() => {});
@@ -249,9 +269,18 @@ module.exports = {
         const minutos = acumulado?.total_minutos || 0;
         const jornadas = acumulado?.total_jornadas || 0;
 
-        await interaction.editReply({
-          content: `⏱️ Tiempo acumulado: ${formatearMinutos(minutos)} | 📁 Jornadas: ${jornadas}`,
+        const embed = crearEmbedRespuesta({
+          color: COLORS.primary,
+          titulo: '⏱️ Horas acumuladas',
+          descripcion: 'Consulta personal de actividad laboral registrada.',
+          campos: [
+            { name: '👤 Trabajador', value: `<@${userId}>`, inline: true },
+            { name: '⏱️ Tiempo acumulado', value: formatearMinutos(minutos), inline: true },
+            { name: '📁 Jornadas cerradas', value: String(jornadas), inline: true },
+          ],
         });
+
+        await interaction.editReply({ embeds: [embed] });
         return;
       }
 
@@ -259,9 +288,13 @@ module.exports = {
         const top = topTrabajadores(guildId, 10);
 
         if (!top.length) {
-          await interaction.editReply({
-            content: 'No existen registros acumulados en el sistema.',
+          const embed = crearEmbedRespuesta({
+            color: COLORS.warning || 0xf1c40f,
+            titulo: '⚠️ Ranking no disponible',
+            descripcion: 'No existen registros acumulados en el sistema.',
           });
+
+          await interaction.editReply({ embeds: [embed] });
           return;
         }
 
@@ -278,13 +311,13 @@ module.exports = {
             `⏱️ Tiempo acumulado: **${formatearMinutos(u.total_minutos)}**`,
             `📁 Jornadas cerradas: **${u.total_jornadas}**`,
           ].join('\n');
-        }).join('\n\n━━━━━━━━━━━━━━━━━━━━\n\n');
+        }).join('\n\n━━━━━━━━━━━━━━━━━━━━━━\n\n');
 
         const embed = new EmbedBuilder()
           .setColor(COLORS.gold)
-          .setTitle('🏆 Ranking Laboral')
+          .setTitle('🏆 Ranking Laboral Institucional')
           .setDescription(descripcion)
-          .setFooter({ text: FOOTERS.ranking })
+          .setFooter({ text: FOOTERS.ranking || FOOTERS.official })
           .setTimestamp();
 
         await interaction.editReply({
@@ -301,18 +334,24 @@ module.exports = {
 
       if (!interaction) return;
 
+      const errorEmbed = crearEmbedRespuesta({
+        color: COLORS.danger || 0x8b0000,
+        titulo: '❌ Error del sistema',
+        descripcion: 'Ocurrió un error al procesar la interacción.',
+      });
+
       if (interaction.deferred) {
         await interaction.editReply({
-          content: '❌ Ocurrió un error al procesar la interacción.',
+          embeds: [errorEmbed],
         }).catch(() => {});
       } else if (interaction.replied) {
         await interaction.followUp({
-          content: '❌ Ocurrió un error al procesar la interacción.',
+          embeds: [errorEmbed],
           flags: MessageFlags.Ephemeral,
         }).catch(() => {});
       } else {
         await interaction.reply({
-          content: '❌ Ocurrió un error al procesar la interacción.',
+          embeds: [errorEmbed],
           flags: MessageFlags.Ephemeral,
         }).catch(() => {});
       }
