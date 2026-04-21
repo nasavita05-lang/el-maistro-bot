@@ -3,7 +3,7 @@ const {
   ChannelType,
   PermissionFlagsBits,
   EmbedBuilder,
-  MessageFlags
+  MessageFlags,
 } = require('discord.js');
 
 const {
@@ -44,7 +44,7 @@ module.exports = {
         .addChannelOption(option =>
           option
             .setName('ranking')
-            .setDescription('Canal destinado al ranking / dashboard')
+            .setDescription('Canal destinado al ranking o dashboard')
             .addChannelTypes(ChannelType.GuildText)
             .setRequired(false)
         )
@@ -97,6 +97,10 @@ module.exports = {
       return;
     }
 
+    await interaction.deferReply({
+      flags: MessageFlags.Ephemeral,
+    });
+
     const sub = interaction.options.getSubcommand();
     const guild = interaction.guild;
     const guildId = guild.id;
@@ -107,9 +111,15 @@ module.exports = {
       const ranking = interaction.options.getChannel('ranking');
 
       if (!panel && !logs && !ranking) {
-        await interaction.reply({
-          content: '⚠️ Debes indicar al menos un canal para actualizar.',
-          flags: MessageFlags.Ephemeral,
+        const warnEmbed = new EmbedBuilder()
+          .setColor(COLORS.warning || 0xf1c40f)
+          .setTitle('⚠️ Sin cambios aplicados')
+          .setDescription('Debes indicar al menos un canal para actualizar la configuración.')
+          .setFooter({ text: FOOTERS.admin || FOOTERS.official })
+          .setTimestamp();
+
+        await interaction.editReply({
+          embeds: [warnEmbed],
         });
         return;
       }
@@ -129,9 +139,20 @@ module.exports = {
 
       const embed = new EmbedBuilder()
         .setColor(COLORS.success)
-        .setTitle('✅ Canales configurados')
-        .setDescription('La configuración de canales se actualizó correctamente.')
+        .setTitle('✅ Configuración de canales aplicada')
+        .setDescription(
+          [
+            'La estructura principal de canales del sistema fue actualizada correctamente.',
+            '',
+            'Cualquier panel institucional pendiente fue verificado o restaurado automáticamente.',
+          ].join('\n')
+        )
         .addFields(
+          {
+            name: '🏛️ Servidor',
+            value: guild.name,
+            inline: true,
+          },
           {
             name: '🪟 Canal de panel',
             value: config.panel_channel_id ? `<#${config.panel_channel_id}>` : 'No configurado',
@@ -146,14 +167,18 @@ module.exports = {
             name: '🏆 Canal de ranking',
             value: config.ranking_channel_id ? `<#${config.ranking_channel_id}>` : 'No configurado',
             inline: true,
+          },
+          {
+            name: '📌 Estado del sistema',
+            value: config.system_enabled ? 'Activo' : 'Deshabilitado',
+            inline: true,
           }
         )
         .setFooter({ text: FOOTERS.admin || FOOTERS.official })
         .setTimestamp();
 
-      await interaction.reply({
+      await interaction.editReply({
         embeds: [embed],
-        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -165,9 +190,15 @@ module.exports = {
       const empleado = interaction.options.getRole('empleado');
 
       if (!admin && !supervisor && !inspector && !empleado) {
-        await interaction.reply({
-          content: '⚠️ Debes indicar al menos un rol para actualizar.',
-          flags: MessageFlags.Ephemeral,
+        const warnEmbed = new EmbedBuilder()
+          .setColor(COLORS.warning || 0xf1c40f)
+          .setTitle('⚠️ Sin cambios aplicados')
+          .setDescription('Debes indicar al menos un rol para actualizar la configuración.')
+          .setFooter({ text: FOOTERS.admin || FOOTERS.official })
+          .setTimestamp();
+
+        await interaction.editReply({
+          embeds: [warnEmbed],
         });
         return;
       }
@@ -184,9 +215,20 @@ module.exports = {
 
       const embed = new EmbedBuilder()
         .setColor(COLORS.success)
-        .setTitle('✅ Roles configurados')
-        .setDescription('La configuración de roles se actualizó correctamente.')
+        .setTitle('✅ Configuración de roles aplicada')
+        .setDescription(
+          [
+            'La jerarquía operativa del sistema fue actualizada correctamente.',
+            '',
+            'Los permisos del bot ahora tomarán como referencia los roles configurados a continuación.',
+          ].join('\n')
+        )
         .addFields(
+          {
+            name: '🏛️ Servidor',
+            value: guild.name,
+            inline: true,
+          },
           {
             name: '🛡️ Admin',
             value: roles.administrador_role_id ? `<@&${roles.administrador_role_id}>` : 'No configurado',
@@ -211,9 +253,8 @@ module.exports = {
         .setFooter({ text: FOOTERS.admin || FOOTERS.official })
         .setTimestamp();
 
-      await interaction.reply({
+      await interaction.editReply({
         embeds: [embed],
-        flags: MessageFlags.Ephemeral,
       });
     }
   },

@@ -2,7 +2,7 @@ const {
   SlashCommandBuilder,
   PermissionFlagsBits,
   EmbedBuilder,
-  MessageFlags
+  MessageFlags,
 } = require('discord.js');
 
 const {
@@ -45,6 +45,22 @@ module.exports = {
             .setDescription('Zona horaria IANA. Ej: America/Mexico_City')
             .setRequired(true)
         )
+    )
+
+    .addSubcommand(sub =>
+      sub
+        .setName('sistema')
+        .setDescription('Activar o desactivar el sistema')
+        .addStringOption(option =>
+          option
+            .setName('estado')
+            .setDescription('Estado operativo del sistema')
+            .setRequired(true)
+            .addChoices(
+              { name: 'Activar', value: 'activar' },
+              { name: 'Desactivar', value: 'desactivar' }
+            )
+        )
     ),
 
   async execute(interaction) {
@@ -64,6 +80,10 @@ module.exports = {
       return;
     }
 
+    await interaction.deferReply({
+      flags: MessageFlags.Ephemeral,
+    });
+
     const guild = interaction.guild;
     const guildId = guild.id;
     const sub = interaction.options.getSubcommand();
@@ -74,8 +94,8 @@ module.exports = {
 
       const embed = new EmbedBuilder()
         .setColor(COLORS.primary)
-        .setTitle('⚙️ Configuración del sistema')
-        .setDescription('Estado actual de la configuración multiservidor.')
+        .setTitle('⚙️ Configuración institucional del sistema')
+        .setDescription('Resumen general de la configuración operativa del servidor.')
         .addFields(
           {
             name: '🏷️ Servidor',
@@ -88,22 +108,22 @@ module.exports = {
             inline: true,
           },
           {
-            name: '🟢 Sistema',
+            name: '🟢 Estado del sistema',
             value: config.system_enabled ? 'Activo' : 'Deshabilitado',
             inline: true,
           },
           {
-            name: '🪟 Panel',
+            name: '🪟 Canal de panel',
             value: config.panel_channel_id ? `<#${config.panel_channel_id}>` : 'No configurado',
             inline: true,
           },
           {
-            name: '🧾 Logs',
+            name: '🧾 Canal de logs',
             value: config.log_channel_id ? `<#${config.log_channel_id}>` : 'No configurado',
             inline: true,
           },
           {
-            name: '🏆 Ranking',
+            name: '🏆 Canal de ranking',
             value: config.ranking_channel_id ? `<#${config.ranking_channel_id}>` : 'No configurado',
             inline: true,
           },
@@ -131,9 +151,8 @@ module.exports = {
         .setFooter({ text: FOOTERS.admin || FOOTERS.official })
         .setTimestamp();
 
-      await interaction.reply({
+      await interaction.editReply({
         embeds: [embed],
-        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -142,9 +161,22 @@ module.exports = {
       const zona = interaction.options.getString('zona', true).trim();
 
       if (!esTimezoneValida(zona)) {
-        await interaction.reply({
-          content: '❌ La timezone no es válida. Usa formato IANA, por ejemplo: `America/Mexico_City`',
-          flags: MessageFlags.Ephemeral,
+        const warnEmbed = new EmbedBuilder()
+          .setColor(COLORS.warning || 0xf1c40f)
+          .setTitle('❌ Timezone inválida')
+          .setDescription(
+            [
+              'La zona horaria indicada no es válida.',
+              '',
+              'Usa formato IANA, por ejemplo:',
+              '`America/Mexico_City`',
+            ].join('\n')
+          )
+          .setFooter({ text: FOOTERS.admin || FOOTERS.official })
+          .setTimestamp();
+
+        await interaction.editReply({
+          embeds: [warnEmbed],
         });
         return;
       }
@@ -157,13 +189,56 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setColor(COLORS.success)
         .setTitle('✅ Timezone actualizada')
-        .setDescription(`La zona horaria del servidor ahora es:\n\`${zona}\``)
+        .setDescription(
+          [
+            'La zona horaria del servidor fue actualizada correctamente.',
+            '',
+            `Nueva zona configurada: \`${zona}\``,
+          ].join('\n')
+        )
         .setFooter({ text: FOOTERS.admin || FOOTERS.official })
         .setTimestamp();
 
-      await interaction.reply({
+      await interaction.editReply({
         embeds: [embed],
-        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    if (sub === 'sistema') {
+      const estado = interaction.options.getString('estado', true);
+      const habilitado = estado === 'activar';
+
+      guardarConfiguracionCanales(guildId, {
+        guild_name: guild.name,
+        system_enabled: habilitado ? 1 : 0,
+      });
+
+      const embed = new EmbedBuilder()
+        .setColor(habilitado ? COLORS.success : (COLORS.warning || 0xf1c40f))
+        .setTitle(habilitado ? '✅ Sistema activado' : '⚠️ Sistema desactivado')
+        .setDescription(
+          habilitado
+            ? 'El sistema institucional quedó habilitado y operativo para este servidor.'
+            : 'El sistema institucional fue deshabilitado para este servidor.'
+        )
+        .addFields(
+          {
+            name: '🏛️ Servidor',
+            value: guild.name,
+            inline: true,
+          },
+          {
+            name: '📌 Estado actual',
+            value: habilitado ? 'Activo' : 'Deshabilitado',
+            inline: true,
+          }
+        )
+        .setFooter({ text: FOOTERS.admin || FOOTERS.official })
+        .setTimestamp();
+
+      await interaction.editReply({
+        embeds: [embed],
       });
     }
   },
