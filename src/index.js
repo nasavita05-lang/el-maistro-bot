@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { Client, Collection, GatewayIntentBits } = require('discord.js');
+const { Client, Collection, GatewayIntentBits, Events } = require('discord.js');
 const { token, debug, botName } = require('./config');
 const { asegurarPanelFijo } = require('./utils/panel');
 const { iniciarRespaldoAutomatico } = require('./utils/autoBackup');
@@ -36,6 +36,9 @@ function cargarComandos() {
 
 function cargarEventos() {
   const eventsPath = path.join(__dirname, 'events');
+
+  if (!fs.existsSync(eventsPath)) return;
+
   const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
 
   for (const file of eventFiles) {
@@ -58,8 +61,8 @@ function cargarEventos() {
 cargarComandos();
 cargarEventos();
 
-client.once('ready', async () => {
-  console.log(`✅ ${botName} encendido como ${client.user.tag}`);
+client.once(Events.ClientReady, async readyClient => {
+  console.log(`✅ ${botName} encendido como ${readyClient.user.tag}`);
   console.log(`📦 Comandos cargados: ${client.commands.size}`);
 
   try {

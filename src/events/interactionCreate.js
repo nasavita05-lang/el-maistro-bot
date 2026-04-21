@@ -11,7 +11,7 @@ const {
 
 const { renderDashboardLight } = require('../utils/dashboard');
 const { formatearMinutos } = require('../utils/format');
-const { timezone, logChannelId: defaultLogChannelId } = require('../config');
+const { timezone } = require('../config');
 const { COLORS, FOOTERS } = require('../utils/theme');
 const { exigirRol, ROLES } = require('../utils/permissions');
 
@@ -62,6 +62,10 @@ module.exports = {
 
   async execute(interaction) {
     try {
+      if (!interaction || typeof interaction.isChatInputCommand !== 'function') {
+        return;
+      }
+
       if (interaction.isChatInputCommand()) {
         const command = interaction.client.commands.get(interaction.commandName);
         if (!command) return;
@@ -96,17 +100,19 @@ module.exports = {
         return;
       }
 
-   const config = obtenerConfiguracionEfectiva(guildId);
-if (!config.system_enabled) {
-  await interaction.reply({
-    content: '⚠️ El sistema está deshabilitado en este servidor.',
-    ephemeral: true,
-  });
-  return;
-}
+      const config = obtenerConfiguracionEfectiva(guildId);
 
-const logChannelId = config.log_channel_id || defaultLogChannelId || '';
-const activeTimezone = config.timezone || timezone;
+      if (!config.system_enabled) {
+        await interaction.reply({
+          content: '⚠️ El sistema está deshabilitado en este servidor.',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      const logChannelId = config.log_channel_id || '';
+      const activeTimezone = config.timezone || timezone;
+
       const requiereRolEmpleado = ['panel_entrar', 'panel_salir', 'panel_horas'];
       if (requiereRolEmpleado.includes(customId) && !exigirRol(interaction, ROLES.EMPLEADO)) {
         await interaction.reply({
@@ -277,7 +283,7 @@ const activeTimezone = config.timezone || timezone;
 
         const embed = new EmbedBuilder()
           .setColor(COLORS.gold)
-          .setTitle('🏆 Leaderboard Laboral')
+          .setTitle('🏆 Ranking Laboral')
           .setDescription(descripcion)
           .setFooter({ text: FOOTERS.ranking })
           .setTimestamp();
@@ -286,10 +292,13 @@ const activeTimezone = config.timezone || timezone;
           embeds: [embed],
           ephemeral: true,
         });
-        return;
       }
     } catch (error) {
       console.error('❌ Error en interactionCreate:', error);
+
+      if (!interaction || typeof interaction.reply !== 'function') {
+        return;
+      }
 
       if (interaction.replied || interaction.deferred) {
         await interaction.followUp({
