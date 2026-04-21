@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder,MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const { obtenerAcumulado } = require('../database/db');
 const { formatearMinutos } = require('../utils/format');
 const { COLORS, FOOTERS } = require('../utils/theme');
@@ -7,13 +7,7 @@ const { exigirRol, ROLES } = require('../utils/permissions');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('horas')
-    .setDescription('Consultar horas acumuladas')
-    .addUserOption(option =>
-      option
-        .setName('usuario')
-        .setDescription('Empleado a consultar')
-        .setRequired(false)
-    ),
+    .setDescription('Consultar horas acumuladas'),
 
   async execute(interaction) {
     if (!interaction.guild) {
@@ -24,38 +18,29 @@ module.exports = {
       return;
     }
 
-    const usuario = interaction.options.getUser('usuario') || interaction.user;
-    const consultaAjena = usuario.id !== interaction.user.id;
-
-    if (consultaAjena && !exigirRol(interaction, ROLES.INSPECTOR)) {
+    if (!exigirRol(interaction, ROLES.EMPLEADO)) {
       await interaction.reply({
-        content: '❌ No tienes permiso para consultar las horas de otro usuario.',
+        content: '❌ No tienes permiso para consultar horas acumuladas.',
         flags: MessageFlags.Ephemeral,
       });
       return;
     }
 
-    if (!consultaAjena && !exigirRol(interaction, ROLES.EMPLEADO)) {
-      await interaction.reply({
-        content: '❌ No tienes permiso para consultar tu registro laboral.',
-        flags: MessageFlags.Ephemeral,
-      });
-      return;
-    }
-
-    const acumulado = obtenerAcumulado(usuario.id, interaction.guild.id);
+    const guildId = interaction.guild.id;
+    const userId = interaction.user.id;
+    const acumulado = obtenerAcumulado(userId, guildId);
 
     const minutos = acumulado?.total_minutos || 0;
     const jornadas = acumulado?.total_jornadas || 0;
 
     const embed = new EmbedBuilder()
       .setColor(COLORS.primary)
-      .setTitle('📊 Consulta de Registro Laboral')
-      .setDescription('Resultado de consulta dentro del sistema institucional.')
+      .setTitle('⏱️ Resumen de horas acumuladas')
+      .setDescription('Consulta personal de actividad laboral registrada en el sistema.')
       .addFields(
-        { name: '👤 Empleado', value: `<@${usuario.id}>`, inline: true },
+        { name: '👤 Trabajador', value: `<@${userId}>`, inline: true },
         { name: '⏱️ Tiempo acumulado', value: formatearMinutos(minutos), inline: true },
-        { name: '📁 Jornadas registradas', value: String(jornadas), inline: true }
+        { name: '📁 Jornadas cerradas', value: String(jornadas), inline: true }
       )
       .setFooter({ text: FOOTERS.official })
       .setTimestamp();
