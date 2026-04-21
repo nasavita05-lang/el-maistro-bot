@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { SlashCommandBuilder, AttachmentBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, AttachmentBuilder, PermissionFlagsBits , MessageFlags} = require('discord.js');
 const { obtenerTodasLasJornadas } = require('../database/db');
 
 module.exports = {
@@ -10,7 +10,7 @@ module.exports = {
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
   async execute(interaction) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const registros = obtenerTodasLasJornadas(interaction.guild.id);
 

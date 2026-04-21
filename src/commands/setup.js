@@ -3,6 +3,7 @@ const {
   ChannelType,
   PermissionFlagsBits,
   EmbedBuilder,
+  MessageFlags
 } = require('discord.js');
 
 const {
@@ -83,7 +84,7 @@ module.exports = {
     if (!interaction.guild) {
       await interaction.reply({
         content: '❌ Este comando solo puede usarse dentro de un servidor.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -91,7 +92,7 @@ module.exports = {
     if (!exigirRol(interaction, ROLES.ADMIN)) {
       await interaction.reply({
         content: '❌ No tienes permiso para configurar este sistema.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -108,7 +109,7 @@ module.exports = {
       if (!panel && !logs && !ranking) {
         await interaction.reply({
           content: '⚠️ Debes indicar al menos un canal para actualizar.',
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -152,7 +153,7 @@ module.exports = {
 
       await interaction.reply({
         embeds: [embed],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -166,7 +167,7 @@ module.exports = {
       if (!admin && !supervisor && !inspector && !empleado) {
         await interaction.reply({
           content: '⚠️ Debes indicar al menos un rol para actualizar.',
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -212,7 +213,7 @@ module.exports = {
 
       await interaction.reply({
         embeds: [embed],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
   },

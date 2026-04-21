@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits,MessageFlags } = require('discord.js');
 const { asegurarPanelFijo } = require('../utils/panel');
 
 module.exports = {
@@ -11,7 +11,7 @@ module.exports = {
     if (!interaction.guild) {
       await interaction.reply({
         content: '❌ Este comando solo puede usarse dentro de un servidor.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -21,14 +21,14 @@ module.exports = {
 
       await interaction.reply({
         content: '✅ Panel institucional verificado o restaurado correctamente.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     } catch (error) {
       console.error('❌ Error al asegurar el panel:', error);
 
       await interaction.reply({
         content: '❌ No se pudo verificar o restaurar el panel institucional.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
   },

@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder,MessageFlags } = require('discord.js');
 const {
   cerrarSalida,
   obtenerConfiguracion,
@@ -17,7 +17,7 @@ module.exports = {
     if (!interaction.guild) {
       await interaction.reply({
         content: '❌ Este comando solo puede usarse dentro de un servidor.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -25,7 +25,7 @@ module.exports = {
     if (!exigirRol(interaction, ROLES.EMPLEADO)) {
       await interaction.reply({
         content: '❌ No tienes permiso para registrar salida de servicio.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -39,7 +39,7 @@ module.exports = {
     if (!resultado) {
       await interaction.reply({
         content: '⚠️ No cuentas con una jornada activa.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -60,7 +60,7 @@ module.exports = {
 
     await interaction.reply({
       embeds: [embed],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
 
     const config = obtenerConfiguracion(guildId);

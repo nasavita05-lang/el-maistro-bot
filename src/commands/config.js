@@ -2,6 +2,7 @@ const {
   SlashCommandBuilder,
   PermissionFlagsBits,
   EmbedBuilder,
+  MessageFlags
 } = require('discord.js');
 
 const {
@@ -50,7 +51,7 @@ module.exports = {
     if (!interaction.guild) {
       await interaction.reply({
         content: '❌ Este comando solo puede usarse dentro de un servidor.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -58,7 +59,7 @@ module.exports = {
     if (!exigirRol(interaction, ROLES.ADMIN)) {
       await interaction.reply({
         content: '❌ No tienes permiso para consultar o modificar la configuración.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -132,7 +133,7 @@ module.exports = {
 
       await interaction.reply({
         embeds: [embed],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -143,7 +144,7 @@ module.exports = {
       if (!esTimezoneValida(zona)) {
         await interaction.reply({
           content: '❌ La timezone no es válida. Usa formato IANA, por ejemplo: `America/Mexico_City`',
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -162,7 +163,7 @@ module.exports = {
 
       await interaction.reply({
         embeds: [embed],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
   },

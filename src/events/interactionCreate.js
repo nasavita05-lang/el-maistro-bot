@@ -1,4 +1,4 @@
-const { Events, EmbedBuilder } = require('discord.js');
+const { Events, EmbedBuilder, MessageFlags } = require('discord.js');
 const {
   obtenerJornadaActiva,
   crearEntrada,
@@ -92,10 +92,14 @@ module.exports = {
 
       if (!botonesPanel.includes(customId)) return;
 
+      // Reconocer la interacción una sola vez y rápido
+      await interaction.deferReply({
+        flags: MessageFlags.Ephemeral,
+      });
+
       if (tieneCooldown(userId, customId)) {
-        await interaction.reply({
+        await interaction.editReply({
           content: '⏳ Espera unos segundos antes de volver a usar este botón.',
-          ephemeral: true,
         });
         return;
       }
@@ -103,9 +107,8 @@ module.exports = {
       const config = obtenerConfiguracionEfectiva(guildId);
 
       if (!config.system_enabled) {
-        await interaction.reply({
+        await interaction.editReply({
           content: '⚠️ El sistema está deshabilitado en este servidor.',
-          ephemeral: true,
         });
         return;
       }
@@ -114,18 +117,17 @@ module.exports = {
       const activeTimezone = config.timezone || timezone;
 
       const requiereRolEmpleado = ['panel_entrar', 'panel_salir', 'panel_horas'];
+
       if (requiereRolEmpleado.includes(customId) && !exigirRol(interaction, ROLES.EMPLEADO)) {
-        await interaction.reply({
+        await interaction.editReply({
           content: '❌ No tienes permiso para usar este panel laboral.',
-          ephemeral: true,
         });
         return;
       }
 
       if (customId === 'panel_ranking' && !exigirRol(interaction, ROLES.INSPECTOR)) {
-        await interaction.reply({
+        await interaction.editReply({
           content: '❌ No tienes permiso para consultar el ranking.',
-          ephemeral: true,
         });
         return;
       }
@@ -134,18 +136,16 @@ module.exports = {
         const activa = obtenerJornadaActiva(userId, guildId);
 
         if (activa) {
-          await interaction.reply({
+          await interaction.editReply({
             content: '⚠️ Ya tienes una jornada activa.',
-            ephemeral: true,
           });
           return;
         }
 
         crearEntrada(userId, username, guildId);
 
-        await interaction.reply({
+        await interaction.editReply({
           content: '✅ Entrada registrada correctamente.',
-          ephemeral: true,
         });
 
         const rev = getUltimaRevision(guildId, userId);
@@ -154,7 +154,7 @@ module.exports = {
         if (dias !== null && dias > 7) {
           await interaction.followUp({
             content: '🔴 Tienes una revisión pendiente crítica. Contacta a un supervisor.',
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           }).catch(() => {});
         }
 
@@ -194,18 +194,16 @@ module.exports = {
         const resultado = cerrarSalida(userId, guildId);
 
         if (!resultado) {
-          await interaction.reply({
+          await interaction.editReply({
             content: '⚠️ No tienes una jornada activa.',
-            ephemeral: true,
           });
           return;
         }
 
         const tiempo = formatearMinutos(resultado.minutos_trabajados);
 
-        await interaction.reply({
+        await interaction.editReply({
           content: `✅ Salida registrada. Tiempo trabajado: ${tiempo}`,
-          ephemeral: true,
         });
 
         const logEmbed = new EmbedBuilder()
@@ -248,9 +246,8 @@ module.exports = {
         const minutos = acumulado?.total_minutos || 0;
         const jornadas = acumulado?.total_jornadas || 0;
 
-        await interaction.reply({
+        await interaction.editReply({
           content: `⏱️ Tiempo acumulado: ${formatearMinutos(minutos)} | 📁 Jornadas: ${jornadas}`,
-          ephemeral: true,
         });
         return;
       }
@@ -259,9 +256,8 @@ module.exports = {
         const top = topTrabajadores(guildId, 10);
 
         if (!top.length) {
-          await interaction.reply({
+          await interaction.editReply({
             content: 'No existen registros acumulados en el sistema.',
-            ephemeral: true,
           });
           return;
         }
@@ -288,27 +284,28 @@ module.exports = {
           .setFooter({ text: FOOTERS.ranking })
           .setTimestamp();
 
-        await interaction.reply({
+        await interaction.editReply({
           embeds: [embed],
-          ephemeral: true,
         });
       }
     } catch (error) {
       console.error('❌ Error en interactionCreate:', error);
 
-      if (!interaction || typeof interaction.reply !== 'function') {
-        return;
-      }
+      if (!interaction) return;
 
-      if (interaction.replied || interaction.deferred) {
+      if (interaction.deferred) {
+        await interaction.editReply({
+          content: '❌ Ocurrió un error al procesar la interacción.',
+        }).catch(() => {});
+      } else if (interaction.replied) {
         await interaction.followUp({
           content: '❌ Ocurrió un error al procesar la interacción.',
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         }).catch(() => {});
       } else {
         await interaction.reply({
           content: '❌ Ocurrió un error al procesar la interacción.',
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         }).catch(() => {});
       }
     }

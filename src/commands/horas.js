@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder,MessageFlags } = require('discord.js');
 const { obtenerAcumulado } = require('../database/db');
 const { formatearMinutos } = require('../utils/format');
 const { COLORS, FOOTERS } = require('../utils/theme');
@@ -19,7 +19,7 @@ module.exports = {
     if (!interaction.guild) {
       await interaction.reply({
         content: '❌ Este comando solo puede usarse dentro de un servidor.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -30,7 +30,7 @@ module.exports = {
     if (consultaAjena && !exigirRol(interaction, ROLES.INSPECTOR)) {
       await interaction.reply({
         content: '❌ No tienes permiso para consultar las horas de otro usuario.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -38,7 +38,7 @@ module.exports = {
     if (!consultaAjena && !exigirRol(interaction, ROLES.EMPLEADO)) {
       await interaction.reply({
         content: '❌ No tienes permiso para consultar tu registro laboral.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -62,7 +62,7 @@ module.exports = {
 
     await interaction.reply({
       embeds: [embed],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   },
 };

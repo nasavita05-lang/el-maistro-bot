@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder,MessageFlags } = require('discord.js');
 const { topTrabajadores } = require('../database/db');
 const { formatearMinutos } = require('../utils/format');
 const { COLORS, FOOTERS } = require('../utils/theme');
@@ -14,7 +14,7 @@ module.exports = {
     if (!top.length) {
       return interaction.reply({
         content: 'No existen registros acumulados en el sistema.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -41,7 +41,7 @@ module.exports = {
 
     return interaction.reply({
       embeds: [embed],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   },
 };
